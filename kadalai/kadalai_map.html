@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KADALAI - AI Marine Plastic Prevention System | Gulf of Mannar</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a2a3a;
+            overflow: hidden;
+        }
+        
+        /* Map Container */
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 380px;
+            height: 100vh;
+        }
+        
+        /* Dashboard */
+        .dashboard {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 380px;
+            height: 100vh;
+            background: white;
+            box-shadow: -2px 0 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, #006994, #004d66);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .dashboard-header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .dashboard-header p {
+            margin: 8px 0 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .stats-container {
+            padding: 20px;
+            flex: 1;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .stat-title {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-unit {
+            font-size: 12px;
+            color: #999;
+            margin-left: 5px;
+        }
+        
+        .stat-sub {
+            font-size: 11px;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 20px 0 12px 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #e67e22;
+            padding-bottom: 5px;
+        }
+        
+        .risk-list {
+            max-height: 280px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+        
+        .risk-item {
+            background: #fef5e8;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid #dc3545;
+        }
+        
+        .risk-item:hover {
+            background: #ffe0b5;
+            transform: translateX(-3px);
+        }
+        
+        .risk-item strong {
+            font-size: 14px;
+            color: #dc3545;
+        }
+        
+        .risk-item small {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .clean-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+        
+        .clean-item {
+            background: #e8f5e9;
+            padding: 10px;
+            margin-bottom: 6px;
+            border-radius: 8px;
+            border-left: 3px solid #28a745;
+        }
+        
+        .clean-item strong {
+            font-size: 13px;
+            color: #2c3e50;
+        }
+        
+        .refresh-btn {
+            background: #e67e22;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: calc(100% - 40px);
+            margin: 0 20px 15px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+        
+        .refresh-btn:hover {
+            background: #d35400;
+        }
+        
+        .timestamp {
+            text-align: center;
+            font-size: 10px;
+            color: #999;
+            padding: 12px 20px;
+            border-top: 1px solid #eee;
+            background: #fafafa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        
+        .badge-danger { background: #dc3545; color: white; }
+        .badge-warning { background: #ffc107; color: #333; }
+        .badge-success { background: #28a745; color: white; }
+        
+        /* Scrollbar */
+        .risk-list::-webkit-scrollbar, .clean-list::-webkit-scrollbar {
+            width: 5px;
+        }
+        
+        .risk-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .risk-list::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            #map {
+                right: 0;
+                bottom: 380px;
+            }
+            .dashboard {
+                top: auto;
+                bottom: 0;
+                width: 100%;
+                height: 380px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <h1>🌊 KADALAI</h1>
+            <p>AI-Powered Marine Plastic Prevention | Gulf of Mannar, Tamil Nadu</p>
+        </div>
+        
+        <div class="stats-container" id="statsContainer">
+            <!-- Stats will be populated by JavaScript -->
+            <div style="text-align: center; padding: 40px;">Loading dashboard...</div>
+        </div>
+        
+        <button class="refresh-btn" onclick="location.reload()">
+            🔄 REFRESH DATA
+        </button>
+        
+        <div class="timestamp" id="timestamp">
+            Last Updated: Loading...
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // KADALAI - Boat Tracking Data
+        // ============================================
+        
+        // Fishing Villages in Tamil Nadu
+        const villages = [
+            { name: 'Nagapattinam', lat: 10.7649, lng: 79.8428, boats: 320 },
+            { name: 'Thoothukudi', lat: 8.7642, lng: 78.1348, boats: 380 },
+            { name: 'Rameswaram', lat: 9.2876, lng: 79.3129, boats: 280 },
+            { name: 'Kanyakumari', lat: 8.0883, lng: 77.5385, boats: 210 },
+            { name: 'Mandapam', lat: 9.2833, lng: 79.1167, boats: 150 },
+            { name: 'Pamban', lat: 9.2500, lng: 79.2167, boats: 120 },
+            { name: 'Kilakarai', lat: 9.2333, lng: 78.7833, boats: 180 },
+            { name: 'Tiruvarur', lat: 10.7667, lng: 79.6333, boats: 200 },
+            { name: 'Pudukkottai', lat: 10.3833, lng: 79.3667, boats: 150 }
+        ];
+        
+        // Dumping Zones (ALL in Sea - Gulf of Mannar)
+        const dumpingZones = [
+            { lat: 8.95, lng: 78.55, name: 'Tuticorin Offshore', risk: 'Critical', area: '548 m² debris', color: 'darkred' },
+            { lat: 9.45, lng: 79.65, name: 'Gulf of Mannar Core', risk: 'High', area: '1,152 m² affected', color: 'red' },
+            { lat: 9.35, lng: 79.40, name: 'Mandapam Reef', risk: 'High', area: 'Ghost nets reported', color: 'red' },
+            { lat: 8.65, lng: 78.30, name: 'Kanyakumari Waters', risk: 'Medium', area: 'Plastic accumulation', color: 'orange' },
+            { lat: 10.65, lng: 80.30, name: 'Nagai Basin', risk: 'High', area: 'Fishing debris hotspot', color: 'red' }
+        ];
+        
+        // Generate Boats (Random positions in water)
+        function generateBoats() {
+            const boats = [];
+            let boatId = 1;
+            
+            villages.forEach(village => {
+                const numBoats = Math.floor(Math.random() * 4) + 4; // 4-7 boats per village
+                
+                for (let i = 0; i < numBoats; i++) {
+                    // Place boats in water (offshore)
+                    const latOffset = 0.8 + Math.random() * 1.5;
+                    const lngOffset = 0.5 + Math.random() * 1.2;
+                    
+                    const riskScore = Math.floor(Math.random() * 85) + 10;
+                    
+                    let boat = {
+                        id: `TN-${village.name.substring(0,3)}${(i+1).toString().padStart(3,'0')}`,
+                        village: village.name,
+                        lat: village.lat + latOffset,
+                        lng: village.lng + lngOffset,
+                        risk_score: riskScore,
+                        plastic_dumped: 0,
+                        plastic_collected: 0,
+                        reward: 0
+                    };
+                    
+                    if (riskScore > 70) {
+                        boat.status = 'dumping';
+                        boat.plastic_dumped = Math.floor(Math.random() * 55) + 15;
+                        boat.status_text = 'HIGH RISK - DUMPING';
+                        boat.status_color = 'red';
+                    } else if (riskScore > 40) {
+                        boat.status = 'warning';
+                        boat.plastic_dumped = Math.floor(Math.random() * 18) + 3;
+                        boat.status_text = 'MEDIUM RISK - MONITOR';
+                        boat.status_color = 'orange';
+                    } else {
+                        boat.status = 'clean';
+                        boat.plastic_collected = Math.floor(Math.random() * 32) + 8;
+                        boat.reward = boat.plastic_collected * 20;
+                        boat.status_text = 'LOW RISK - CLEAN';
+                        boat.status_color = 'green';
+                    }
+                    
+                    boats.push(boat);
+                    boatId++;
+                }
+            });
+            
+            return boats;
+        }
+        
+        // Calculate Statistics
+        function calculateStats(boats) {
+            const totalBoats = boats.length;
+            const dumpingBoats = boats.filter(b => b.status === 'dumping').length;
+            const warningBoats = boats.filter(b => b.status === 'warning').length;
+            const cleanBoats = boats.filter(b => b.status === 'clean').length;
+            const totalRewards = boats.reduce((sum, b) => sum + (b.reward || 0), 0);
+            const plasticCollected = boats.reduce((sum, b) => sum + (b.plastic_collected || 0), 0);
+            const plasticDumped = boats.reduce((sum, b) => sum + (b.plastic_dumped || 0), 0);
+            
+            return {
+                totalBoats,
+                dumpingBoats,
+                warningBoats,
+                cleanBoats,
+                totalRewards,
+                plasticCollected,
+                plasticDumped,
+                animalsSaved: Math.floor(plasticCollected / 2)
+            };
+        }
+        
+        // Initialize Map
+        const map = L.map('map').setView([9.0, 79.0], 8);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Add Dumping Zones (Red Circles in Sea)
+        dumpingZones.forEach(zone => {
+            const color = zone.risk === 'Critical' ? '#dc3545' : zone.risk === 'High' ? '#ff4444' : '#ff884d';
+            
+            L.circle([zone.lat, zone.lng], {
+                radius: 15000,
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.35,
+                weight: 3
+            }).addTo(map).bindPopup(`
+                <div style="min-width: 240px; padding: 8px;">
+                    <h3 style="color: #dc3545; margin: 0 0 8px 0;">⚠️ ${zone.name}</h3>
+                    <hr style="margin: 5px 0;">
+                    <b>Risk Level:</b> ${zone.risk}<br>
+                    <b>Area Affected:</b> ${zone.area}<br>
+                    <b>Source:</b> SDMRI Gulf of Mannar Survey 2023<br>
+                    <hr style="margin: 5px 0;">
+                    <i>AI actively monitoring this zone</i>
+                </div>
+            `);
+            
+            // Add warning marker
+            L.marker([zone.lat, zone.lng], {
+                icon: L.divIcon({ html: '⚠️', iconSize: [25, 25], className: 'warning-marker' })
+            }).addTo(map).bindPopup(`<b>${zone.name}</b><br>${zone.risk} Risk Zone`);
+        });
+        
+        // Add Villages (Blue Markers)
+        villages.forEach(village => {
+            L.marker([village.lat, village.lng], {
+                icon: L.icon({
+                    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41]
+                })
+            }).addTo(map).bindPopup(`
+                <div style="min-width: 200px;">
+                    <h3 style="color: #006994;">🏘️ ${village.name}</h3>
+                    <b>🚢 Fishing Boats:</b> ${village.boats}<br>
+                    <b>📍 Location:</b> Coastal Tamil Nadu<br>
+                    <b>📊 AI Monitoring:</b> Active
+                </div>
+            `);
+        });
+        
+        // Generate Boats Data
+        const boats = generateBoats();
+        const stats = calculateStats(boats);
+        
+        // Add Boats to Map
+        boats.forEach(boat => {
+            let emoji, popupHtml, tooltipText;
+            
+            if (boat.status === 'dumping') {
+                emoji = '🔴🚤';
+                popupHtml = `
+                    <div style="min-width: 280px; padding: 12px; background: #fff0f0;">
+                        <h3 style="color: #dc3545; margin: 0 0 8px 0;">🔴 ${boat.id}</h3>
+                        <hr>
+                        <b>📍 Village:</b> ${boat.village}<br>
+                        <b>⚠️ Risk Score:</b> <span style="color: red; font-size: 20px; font-weight: bold;">${boat.risk_score}%</span><br>
+                        <b>🔴 Status:</b> DUMPING SUSPECTED<br>
+                        <b>🗑️ Plastic Dumped:</b> ${boat.plastic_dumped} kg<br>
+                        <b>📊 Detection:</b> Speed drop + Night stop + Dumping zone<br>
+                        <hr>
+                        <b>⚠️ Action:</b> Alert Fisheries Department
+                    </div>
+                `;
+                tooltipText = `🔴 ${boat.id} - ${boat.risk_score}% - DUMPING`;
+            } else if (boat.status === 'warning') {
+                emoji = '🟡🚤';
+                popupHtml = `
+                    <div style="min-width: 280px; padding: 12px; background: #fff8f0;">
+                        <h3 style="color: #ff9800; margin: 0 0 8px 0;">🟡 ${boat.id}</h3>
+                        <hr>
+                        <b>📍 Village:</b> ${boat.village}<br>
+                        <b>⚠️ Risk Score:</b> <span style="color: orange; font-size: 20px; font-weight: bold;">${boat.risk_score}%</span><br>
+                        <b>🟡 Status:</b> UNDER OBSERVATION<br>
+                        <b>🗑️ Plastic Dumped:</b> ${boat.plastic_dumped} kg<br>
+                        <b>📊 Detection:</b> Unusual pattern detected<br>
+                        <hr>
+                        <b>📢 Action:</b> Increase monitoring frequency
+                    </div>
+                `;
+                tooltipText = `🟡 ${boat.id} - ${boat.risk_score}% - MONITOR`;
+            } else {
+                emoji = '🟢🚤';
+                popupHtml = `
+                    <div style="min-width: 280px; padding: 12px; background: #f0fff0;">
+                        <h3 style="color: #28a745; margin: 0 0 8px 0;">🟢 ${boat.id}</h3>
+                        <hr>
+                        <b>📍 Village:</b> ${boat.village}<br>
+                        <b>✅ Risk Score:</b> <span style="color: green; font-size: 20px; font-weight: bold;">${boat.risk_score}%</span><br>
+                        <b>🟢 Status:</b> CERTIFIED CLEAN<br>
+                        <b>♻️ Plastic Collected:</b> ${boat.plastic_collected} kg<br>
+                        <b>💰 Reward Earned:</b> <span style="color: green;">₹${boat.reward.toLocaleString()}</span><br>
+                        <hr>
+                        <b>🏆 Status:</b> Eligible for Monthly Bonus
+                    </div>
+                `;
+                tooltipText = `🟢 ${boat.id} - ${boat.risk_score}% - CLEAN`;
+            }
+            
+            L.marker([boat.lat, boat.lng], {
+                icon: L.divIcon({ html: `<div style="font-size: 24px;">${emoji}</div>`, iconSize: [30, 30], className: 'boat-marker' })
+            }).addTo(map).bindPopup(popupHtml).bindTooltip(tooltipText);
+            
+            // Add red glow for high risk boats
+            if (boat.status === 'dumping') {
+                L.circle([boat.lat, boat.lng], {
+                    radius: 3500,
+                    color: '#dc3545',
+                    fillColor: '#dc3545',
+                    fillOpacity: 0.2,
+                    weight: 1
+                }).addTo(map);
+            }
+        });
+        
+        // Update Dashboard
+        function updateDashboard() {
+            const highRiskBoats = boats.filter(b => b.risk_score > 70).sort((a,b) => b.risk_score - a.risk_score);
+            const cleanBoatsList = boats.filter(b => b.status === 'clean').sort((a,b) => b.reward - a.reward);
+            
+            const dashboardHtml = `
+                <div class="stat-card" style="border-left-color: #006994;">
+                    <div class="stat-title">🚢 TOTAL BOATS TRACKED</div>
+                    <div class="stat-value">${stats.totalBoats}</div>
+                    <div class="stat-sub">All fishing vessels in Gulf of Mannar</div>
+                </div>
+                
+                <div class="stat-card" style="border-left-color: #dc3545;">
+                    <div class="stat-title">🔴 DUMPING EVENTS (HIGH RISK)</div>
+                    <div class="stat-value">${stats.dumpingBoats}</div>
+                    <div class="stat-sub">suspected dumping boats - Immediate action needed</div>
+                </div>
+                
+                <div class="stat-card" style="border-left-color: #ffc107;">
+                    <div class="stat-title">🟡 SUSPENDED BOATS (MEDIUM RISK)</div>
+                    <div class="stat-value">${stats.warningBoats}</div>
+                    <div class="stat-sub">under observation - Increased monitoring</div>
+                </div>
+                
+                <div class="stat-card" style="border-left-color: #28a745;">
+                    <div class="stat-title">🟢 CLEAN BOATS (REWARDED)</div>
+                    <div class="stat-value">${stats.cleanBoats}</div>
+                    <div class="stat-sub">certified clean - Rewards distributed</div>
+                </div>
+                
+                <div class="stat-card" style="border-left-color: #e67e22;">
+                    <div class="stat-title">💰 REWARDS DISTRIBUTED</div>
+                    <div class="stat-value">₹${stats.totalRewards.toLocaleString()}</div>
+                    <div class="stat-sub">to fishermen for bringing plastic waste</div>
+                </div>
+                
+                <div class="stat-card" style="border-left-color: #17a2b8;">
+                    <div class="stat-title">♻️ PLASTIC COLLECTED</div>
+                    <div class="stat-value">${stats.plasticCollected} <span class="stat-unit">kg</span></div>
+                    <div class="stat-sub">prevented from entering ocean</div>
+                </div>
+                
+                <div class="stat-card" style="border-left-color: #20c997;">
+                    <div class="stat-title">🐠 MARINE ANIMALS SAVED</div>
+                    <div class="stat-value">${stats.animalsSaved}</div>
+                    <div class="stat-sub">from plastic entanglement</div>
+                </div>
+                
+                <div class="section-title">⚠️ HIGH RISK BOATS (Priority)</div>
+                <div class="risk-list">
+                    ${highRiskBoats.map(boat => `
+                        <div class="risk-item" onclick="alert('Boat: ${boat.id}\\nVillage: ${boat.village}\\nRisk Score: ${boat.risk_score}%\\nPlastic Dumped: ${boat.plastic_dumped} kg\\nAction: Alert Fisheries Dept.')">
+                            <strong>🔴 ${boat.id}</strong> <span class="badge badge-danger">${boat.risk_score}%</span><br>
+                            <small>${boat.village} | Dumped: ${boat.plastic_dumped}kg</small>
+                        </div>
+                    `).join('') || '<div style="padding: 10px; text-align: center; color: #999;">No high risk boats detected</div>'}
+                </div>
+                
+                <div class="section-title">🟢 TOP CLEAN BOATS (Rewarded)</div>
+                <div class="clean-list">
+                    ${cleanBoatsList.slice(0,5).map(boat => `
+                        <div class="clean-item" onclick="alert('Boat: ${boat.id}\\nVillage: ${boat.village}\\nPlastic Collected: ${boat.plastic_collected} kg\\nReward: ₹${boat.reward}\\nStatus: Certified Clean')">
+                            <strong>🟢 ${boat.id}</strong> <span class="badge badge-success">₹${boat.reward}</span><br>
+                            <small>${boat.village} | Collected: ${boat.plastic_collected}kg</small>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            document.getElementById('statsContainer').innerHTML = dashboardHtml;
+            document.getElementById('timestamp').innerHTML = `Last Updated: ${new Date().toLocaleString()}<br>Data Source: SDMRI Gulf of Mannar Survey 2023`;
+        }
+        
+        updateDashboard();
+        
+        // Add legend control
+        const legend = L.control({ position: 'bottomleft' });
+        legend.onAdd = function() {
+            const div = L.DomUtil.create('div', 'info legend');
+            div.innerHTML = `
+                <div style="background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-size: 12px;">
+                    <b>📌 LEGEND</b><br>
+                    🔴 Red Circle = Dumping Zone (SDMRI Data)<br>
+                    🟢🚤 Green Boat = Clean Boat (Rewarded)<br>
+                    🟡🚤 Yellow Boat = Under Observation<br>
+                    🔴🚤 Red Boat = Dumping Suspect<br>
+                    🔵 Blue Marker = Fishing Village<br>
+                    <hr style="margin: 5px 0;">
+                    <i>Click on any marker for details</i>
+                </div>
+            `;
+            return div;
+        };
+        legend.addTo(map);
+        
+        // Add title overlay
+        const titleControl = L.control({ position: 'topleft' });
+        titleControl.onAdd = function() {
+            const div = L.DomUtil.create('div', 'info title');
+            div.innerHTML = `
+                <div style="background: white; padding: 8px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    <b>🌊 KADALAI</b> | AI Marine Monitoring | Gulf of Mannar, Tamil Nadu
+                </div>
+            `;
+            return div;
+        };
+        titleControl.addTo(map);
+    </script>
+</body>
+</html>
