@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OceanGuard - Fisher Login</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a1628 0%, #1a3a5c 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .login-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 400px; }
+        .login-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            overflow: hidden;
+        }
+        .login-header {
+            background: var(--navy);
+            color: white;
+            padding: 28px 30px;
+            text-align: center;
+            border-bottom: 3px solid #27ae60;
+        }
+        .login-header h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+        .login-header h1 span { color: #6bcb77; }
+        .login-header p { font-size: 12px; opacity: 0.7; }
+        .login-body { padding: 28px 30px; }
+        .input-group { margin-bottom: 16px; }
+        .input-group label { display:block; margin-bottom:6px; color:var(--navy); font-weight:600; font-size:13px; }
+        .input-group input {
+            width: 100%; padding: 11px 14px;
+            border: 1px solid var(--border); border-radius: 8px;
+            font-size: 14px; font-family: inherit; color: var(--text);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-group input:focus { outline:none; border-color:#27ae60; box-shadow:0 0 0 3px rgba(39,174,96,0.12); }
+        .login-btn {
+            width: 100%; padding: 12px;
+            background: #1e7e34; color: white; border: none;
+            border-radius: 8px; font-size: 15px; font-weight: 600;
+            cursor: pointer; font-family: inherit; transition: background 0.2s;
+        }
+        .login-btn:hover { background: #155724; }
+        .error-msg { background:#fdecea; color:#c0392b; border:1px solid #f5c6cb; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; }
+        .links { display:flex; justify-content:space-between; margin-top:16px; font-size:13px; }
+        .links a { color:var(--accent); text-decoration:none; font-weight:500; }
+        .links a:hover { text-decoration:underline; }
+        .demo-info { background:#f5f8fc; border:1px solid var(--border); padding:14px; border-radius:8px; margin-top:16px; text-align:center; font-size:12px; color:var(--muted); }
+        .demo-info code { background:#e8eef5; padding:2px 6px; border-radius:4px; font-family:monospace; color:var(--navy); font-weight:600; }
+    </style>
+</head>
+<body>
+    <div class="login-wrap">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>🎣 Fisher<span>Portal</span></h1>
+                <p>OceanGuard — Gulf of Mannar</p>
+                <p style="font-size:11px;margin-top:3px;opacity:0.5;">Fisherman Access</p>
+            </div>
+            <div class="login-body">
+                {% if error %}
+                <div class="error-msg">❌ {{ error }}</div>
+                {% endif %}
+                <form method="POST">
+                    <div class="input-group">
+                        <label>👤 Username</label>
+                        <input type="text" name="username" placeholder="Enter your username" required>
+                    </div>
+                    <div class="input-group">
+                        <label>🔒 Password</label>
+                        <input type="password" name="password" placeholder="Enter your password" required>
+                    </div>
+                    <button type="submit" class="login-btn">🎣 Login to Fisher Portal</button>
+                </form>
+                <div class="links">
+                    <a href="/">← Back to Map</a>
+                    <a href="/login">Admin Login →</a>
+                </div>
+                <div class="demo-info">
+                    <strong>📝 Demo Fisher Accounts</strong><br>
+                    <code>fisher1</code> / <code>fish123</code> — Rameswaram<br>
+                    <code>fisher2</code> / <code>fish123</code> — Thoothukudi<br>
+                    <code>fisher3</code> / <code>fish123</code> — Nagapattinam
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

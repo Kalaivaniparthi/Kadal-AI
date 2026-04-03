@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OceanGuard - Admin Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/static/main.js"></script>
+</head>
+<body>
+
+<div class="navbar">
+    <div class="logo"><h1>🌊 OceanGuard <span>Admin</span></h1></div>
+    <div class="nav-links">
+        <a href="/">🗺️ Live Map</a>
+        <a href="/logout" class="logout-btn">🚪 Logout</a>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value" id="totalBoats">—</div><div class="stat-label">🚢 Total Boats</div></div>
+        <div class="stat-card"><div class="stat-value" id="dumpingBoats" style="color:#c0392b">—</div><div class="stat-label">🔴 Dumping</div></div>
+        <div class="stat-card"><div class="stat-value" id="warningBoats" style="color:#b7770d">—</div><div class="stat-label">🟡 Under Watch</div></div>
+        <div class="stat-card"><div class="stat-value" id="cleanBoats" style="color:#1e7e34">—</div><div class="stat-label">🟢 Clean</div></div>
+        <div class="stat-card"><div class="stat-value" id="totalRewards">—</div><div class="stat-label">💰 Rewards (₹)</div></div>
+        <div class="stat-card"><div class="stat-value" id="plasticCollected">—</div><div class="stat-label">♻️ Collected (kg)</div></div>
+        <div class="stat-card"><div class="stat-value" id="totalReports" style="color:#8e44ad">—</div><div class="stat-label">👥 Spotter Reports</div></div>
+        <div class="stat-card"><div class="stat-value" id="totalPatrols" style="color:#1e6fa5">—</div><div class="stat-label">🚔 Patrol Actions</div></div>
+    </div>
+
+    <button class="refresh-btn" onclick="refreshAll()">🔄 Refresh All Data</button>
+
+    <!-- Layer 1: GPS + AIS Map -->
+    <div class="section">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <span style="background:var(--navy);color:white;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">LAYER 1</span>
+            <h2 style="margin:0;border:none;padding:0;">🛰️ GPS + AIS Live Boat Tracking</h2>
+        </div>
+        <div id="adminMap"></div>
+        <div class="map-legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#e74c3c;box-shadow:0 0 6px #e74c3c88;"></span> Dumping Suspect</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#f39c12;"></span> Under Observation</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#27ae60;"></span> Clean / Rewarded</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#1e6fa5;"></span> Fishing Village</div>
+            <div class="legend-item"><span class="legend-dot" style="background:rgba(230,126,34,0.25);border:1px dashed #e67e22;"></span> Dumping Zone (SDMRI)</div>
+        </div>
+    </div>
+
+    <!-- Layer 1: Boats Table -->
+    <div class="section">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <span style="background:var(--navy);color:white;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">LAYER 1</span>
+            <h2 style="margin:0;border:none;padding:0;">🚤 All Fishing Boats — GPS + AIS Data</h2>
+        </div>
+        <div style="overflow-x:auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Boat ID</th><th>Village</th><th>Lat</th><th>Lng</th>
+                        <th>Risk Score</th><th>Status</th>
+                        <th>Dumped</th><th>Collected</th><th>Reward (₹)</th><th>Reports</th>
+                    </tr>
+                </thead>
+                <tbody id="boatsBody">
+                    <tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Layer 1: Dumping Events -->
+    <div class="section">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <span style="background:#c0392b;color:white;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">LAYER 1</span>
+            <h2 style="margin:0;border:none;padding:0;">⚠️ GPS-Flagged Dumping Events</h2>
+        </div>
+        <div style="overflow-x:auto">
+            <table>
+                <thead><tr><th>Boat ID</th><th>Plastic (kg)</th><th>Risk Score</th><th>Location</th><th>Detected At</th></tr></thead>
+                <tbody id="eventsBody">
+                    <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Layer 2: Community Spotter Reports -->
+    <div class="section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="background:#8e44ad;color:white;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">LAYER 2</span>
+                <h2 style="margin:0;border:none;padding:0;">👥 Community Spotter Reports</h2>
+            </div>
+            <button onclick="showSpotterForm()" style="background:#8e44ad;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">
+                + Submit Report
+            </button>
+        </div>
+
+        <!-- Spotter Form -->
+        <div id="spotterForm" style="display:none;background:#f9f5ff;border:1px solid #d7bde2;border-radius:10px;padding:16px;margin-bottom:16px;">
+            <div style="font-size:13px;font-weight:600;color:#6c3483;margin-bottom:12px;">📝 Submit a Spotter Report</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                <input id="sr_boat" placeholder="Boat ID (e.g. TN-Ram001)" style="padding:9px 12px;border:1px solid #d7bde2;border-radius:7px;font-size:13px;font-family:inherit;">
+                <input id="sr_name" placeholder="Your Name (optional)" style="padding:9px 12px;border:1px solid #d7bde2;border-radius:7px;font-size:13px;font-family:inherit;">
+            </div>
+            <textarea id="sr_desc" placeholder="Describe what you saw..." rows="3"
+                style="width:100%;padding:9px 12px;border:1px solid #d7bde2;border-radius:7px;font-size:13px;font-family:inherit;resize:vertical;margin-bottom:10px;"></textarea>
+            <div style="display:flex;gap:10px;">
+                <button onclick="submitSpotterReport()" style="background:#8e44ad;color:white;border:none;padding:8px 20px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;">Submit</button>
+                <button onclick="document.getElementById('spotterForm').style.display='none'" style="background:#eee;color:#555;border:none;padding:8px 16px;border-radius:7px;cursor:pointer;font-size:13px;">Cancel</button>
+            </div>
+            <div id="spotterMsg" style="margin-top:8px;font-size:12px;"></div>
+        </div>
+
+        <div style="overflow-x:auto">
+            <table>
+                <thead><tr><th>Boat ID</th><th>Reporter</th><th>Description</th><th>Status</th><th>Reported At</th></tr></thead>
+                <tbody id="spotterBody">
+                    <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Layer 3: Coast Guard Patrol Actions -->
+    <div class="section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="background:#1e6fa5;color:white;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">LAYER 3</span>
+                <h2 style="margin:0;border:none;padding:0;">🚔 Coast Guard Patrol Actions</h2>
+            </div>
+            <button onclick="showPatrolForm()" style="background:#1e6fa5;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">
+                + Log Patrol Action
+            </button>
+        </div>
+
+        <!-- Patrol Form -->
+        <div id="patrolForm" style="display:none;background:#f0f6ff;border:1px solid #aed6f1;border-radius:10px;padding:16px;margin-bottom:16px;">
+            <div style="font-size:13px;font-weight:600;color:#1a5276;margin-bottom:12px;">🚔 Log Coast Guard Action</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                <input id="pa_boat" placeholder="Boat ID (e.g. TN-Ram001)" style="padding:9px 12px;border:1px solid #aed6f1;border-radius:7px;font-size:13px;font-family:inherit;">
+                <input id="pa_officer" placeholder="Officer Name" style="padding:9px 12px;border:1px solid #aed6f1;border-radius:7px;font-size:13px;font-family:inherit;">
+            </div>
+            <input id="pa_action" placeholder="Action taken (e.g. Inspection dispatched)" style="width:100%;padding:9px 12px;border:1px solid #aed6f1;border-radius:7px;font-size:13px;font-family:inherit;margin-bottom:10px;">
+            <input id="pa_result" placeholder="Result (e.g. Warning issued)" style="width:100%;padding:9px 12px;border:1px solid #aed6f1;border-radius:7px;font-size:13px;font-family:inherit;margin-bottom:10px;">
+            <div style="display:flex;gap:10px;">
+                <button onclick="submitPatrolAction()" style="background:#1e6fa5;color:white;border:none;padding:8px 20px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;">Log Action</button>
+                <button onclick="document.getElementById('patrolForm').style.display='none'" style="background:#eee;color:#555;border:none;padding:8px 16px;border-radius:7px;cursor:pointer;font-size:13px;">Cancel</button>
+            </div>
+            <div id="patrolMsg" style="margin-top:8px;font-size:12px;"></div>
+        </div>
+
+        <div style="overflow-x:auto">
+            <table>
+                <thead><tr><th>Boat ID</th><th>Action</th><th>Officer</th><th>Result</th><th>Date</th></tr></thead>
+                <tbody id="patrolBody">
+                    <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Fisher Complaints -->
+    <div class="section">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <span style="background:#e67e22;color:white;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">FISHER</span>
+            <h2 style="margin:0;border:none;padding:0;">📢 Fisher Complaints</h2>
+        </div>
+        <div style="overflow-x:auto">
+            <table>
+                <thead><tr><th>Boat ID</th><th>Fisher</th><th>Type</th><th>Description</th><th>Status</th><th>Submitted</th></tr></thead>
+                <tbody id="complaintsBody">
+                    <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Rewards -->
+    <div class="section">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <span style="background:#1e7e34;color:white;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">REWARD</span>
+            <h2 style="margin:0;border:none;padding:0;">💰 Clean Boat Reward Payments</h2>
+        </div>
+        <div style="overflow-x:auto">
+            <table>
+                <thead><tr><th>Boat ID</th><th>Plastic (kg)</th><th>Amount (₹)</th><th>Date</th></tr></thead>
+                <tbody id="rewardsBody">
+                    <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="timestamp" id="timestamp">Loading data...</div>
+</div>
+
+<script>
+    let map, markers = {};
+
+    function initMap() {
+        map = initBaseMap('adminMap', [9.2, 79.2], 7);
+    }
+
+    function scrollToRow(boatId) {
+        document.querySelectorAll('#boatsBody tr').forEach(r => r.classList.remove('highlighted'));
+        const row = document.querySelector(`#boatsBody tr[data-id="${boatId}"]`);
+        if (row) { row.classList.add('highlighted'); row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    }
+
+    function flyToBoat(id, lat, lng) {
+        map.flyTo([lat, lng], 11, { duration: 1.2 });
+        if (markers[id]) markers[id].openPopup();
+        scrollToRow(id);
+    }
+
+    async function loadBoats() {
+        const boats = await fetch('/api/boats').then(r => r.json());
+        Object.values(markers).forEach(m => map.removeLayer(m));
+        markers = {};
+
+        boats.forEach(boat => {
+            const marker = L.marker([boat.lat, boat.lng], { icon: makeBoatIcon(boat.status) })
+                .addTo(map)
+                .bindPopup(boatPopupHtml(boat))
+                .bindTooltip(`${boat.id} — ${boat.risk_score}%`, { direction: 'top' });
+            marker.on('click', () => scrollToRow(boat.id));
+            markers[boat.id] = marker;
+        });
+
+        document.getElementById('boatsBody').innerHTML = boats.map(boat => {
+            const color = boatColor(boat.status);
+            const label = boat.status === 'dumping' ? 'DUMPING' : boat.status === 'warning' ? 'MONITOR' : 'CLEAN';
+            return `
+                <tr data-id="${boat.id}" onclick="flyToBoat('${boat.id}', ${boat.lat}, ${boat.lng})">
+                    <td><strong>${boat.id}</strong></td>
+                    <td>${boat.village}</td>
+                    <td style="color:var(--muted)">${boat.lat.toFixed(4)}</td>
+                    <td style="color:var(--muted)">${boat.lng.toFixed(4)}</td>
+                    <td>
+                        <div class="risk-bar-wrap">
+                            <div class="risk-bar-bg">
+                                <div class="risk-bar-fill" style="width:${boat.risk_score}%;background:${color};"></div>
+                            </div>
+                            <span style="color:${color};font-weight:600;font-size:12px;">${boat.risk_score}%</span>
+                        </div>
+                    </td>
+                    <td><span class="badge badge-${boat.status}">${label}</span></td>
+                    <td>${boat.plastic_dumped} kg</td>
+                    <td>${boat.plastic_collected} kg</td>
+                    <td style="color:#1e7e34;font-weight:600;">₹${boat.reward.toLocaleString()}</td>
+                    <td>
+                        ${boat.spotter_reports > 0
+                            ? `<span style="background:#fdecea;color:#c0392b;border:1px solid #f5c6cb;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">👥 ${boat.spotter_reports}</span>`
+                            : `<span style="color:var(--muted);font-size:12px;">—</span>`}
+                    </td>
+                </tr>`;
+        }).join('') || `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">No boats found</td></tr>`;
+    }
+
+    async function loadStats() {
+        const s = await fetch('/api/stats').then(r => r.json());
+        document.getElementById('totalBoats').innerText       = s.total_boats;
+        document.getElementById('dumpingBoats').innerText     = s.dumping_boats;
+        document.getElementById('warningBoats').innerText     = s.warning_boats;
+        document.getElementById('cleanBoats').innerText       = s.clean_boats;
+        document.getElementById('totalRewards').innerText     = '₹' + s.total_rewards.toLocaleString();
+        document.getElementById('plasticCollected').innerText = s.plastic_collected + ' kg';
+        document.getElementById('totalReports').innerText     = s.total_reports;
+        document.getElementById('totalPatrols').innerText     = s.total_patrols;
+    }
+
+    async function loadEvents() {
+        const events = await fetch('/api/dumping-events').then(r => r.json());
+        document.getElementById('eventsBody').innerHTML = events.map(e => `
+            <tr>
+                <td><strong style="color:#c0392b">${e.boat_id}</strong></td>
+                <td>${e.plastic_kg} kg</td>
+                <td><span style="color:#c0392b;font-weight:600;">${e.risk_score}%</span></td>
+                <td style="color:var(--muted)">${e.lat.toFixed(4)}, ${e.lng.toFixed(4)}</td>
+                <td style="color:var(--muted)">${new Date(e.detected_at).toLocaleString()}</td>
+            </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No events recorded</td></tr>`;
+    }
+
+    async function loadSpotterReports() {
+        const reports = await fetch('/api/spotter-reports').then(r => r.json());
+        document.getElementById('spotterBody').innerHTML = reports.map(r => `
+            <tr>
+                <td><strong style="color:#8e44ad">${r.boat_id}</strong></td>
+                <td>${r.reporter_name}</td>
+                <td style="max-width:280px;">${r.description}</td>
+                <td><span style="background:#f9f5ff;color:#8e44ad;border:1px solid #d7bde2;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">${r.status}</span></td>
+                <td style="color:var(--muted)">${new Date(r.reported_at).toLocaleString()}</td>
+            </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No reports submitted</td></tr>`;
+    }
+
+    async function loadPatrolActions() {
+        const actions = await fetch('/api/patrol-actions').then(r => r.json());
+        document.getElementById('patrolBody').innerHTML = actions.map(a => `
+            <tr>
+                <td><strong style="color:#1e6fa5">${a.boat_id}</strong></td>
+                <td>${a.action}</td>
+                <td>${a.officer}</td>
+                <td style="color:#1e7e34;font-weight:500;">${a.result}</td>
+                <td style="color:var(--muted)">${new Date(a.actioned_at).toLocaleString()}</td>
+            </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No patrol actions logged</td></tr>`;
+    }
+
+    async function loadRewards() {
+        const rewards = await fetch('/api/rewards').then(r => r.json());
+        document.getElementById('rewardsBody').innerHTML = rewards.map(r => `
+            <tr>
+                <td><strong style="color:#1e7e34">${r.boat_id}</strong></td>
+                <td>${r.plastic_kg} kg</td>
+                <td style="color:#1e7e34;font-weight:600;">₹${r.amount.toLocaleString()}</td>
+                <td style="color:var(--muted)">${new Date(r.rewarded_at).toLocaleString()}</td>
+            </tr>`).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px;">No rewards recorded</td></tr>`;
+    }
+
+    function showSpotterForm() {
+        document.getElementById('spotterForm').style.display = 'block';
+    }
+
+    async function submitSpotterReport() {
+        const boat_id     = document.getElementById('sr_boat').value.trim();
+        const description = document.getElementById('sr_desc').value.trim();
+        const reporter    = document.getElementById('sr_name').value.trim() || 'Anonymous';
+        const msg         = document.getElementById('spotterMsg');
+        if (!boat_id || !description) { msg.style.color = '#c0392b'; msg.innerText = 'Boat ID and description are required.'; return; }
+        const res = await fetch('/api/spotter-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ boat_id, reporter_name: reporter, description, lat: 0, lng: 0 })
+        });
+        const data = await res.json();
+        msg.style.color = '#1e7e34';
+        msg.innerText   = '✅ ' + data.message;
+        document.getElementById('sr_boat').value = '';
+        document.getElementById('sr_name').value = '';
+        document.getElementById('sr_desc').value = '';
+        setTimeout(() => { document.getElementById('spotterForm').style.display = 'none'; refreshAll(); }, 1500);
+    }
+
+    function showPatrolForm() {
+        document.getElementById('patrolForm').style.display = 'block';
+    }
+
+    async function submitPatrolAction() {
+        const boat_id = document.getElementById('pa_boat').value.trim();
+        const officer = document.getElementById('pa_officer').value.trim();
+        const action  = document.getElementById('pa_action').value.trim();
+        const result  = document.getElementById('pa_result').value.trim();
+        const msg     = document.getElementById('patrolMsg');
+        if (!boat_id) { msg.style.color = '#c0392b'; msg.innerText = 'Boat ID is required.'; return; }
+        await fetch('/api/patrol-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ boat_id, officer, action, result })
+        });
+        msg.style.color = '#1e7e34';
+        msg.innerText   = '✅ Patrol action logged.';
+        ['pa_boat','pa_officer','pa_action','pa_result'].forEach(id => document.getElementById(id).value = '');
+        setTimeout(() => { document.getElementById('patrolForm').style.display = 'none'; refreshAll(); }, 1500);
+    }
+
+    async function loadComplaints() {
+        const complaints = await fetch('/api/admin/complaints').then(r => r.json());
+        document.getElementById('complaintsBody').innerHTML = complaints.map(c => `
+            <tr>
+                <td><strong style="color:#e67e22">${c.boat_id}</strong></td>
+                <td>${c.fisher_name}</td>
+                <td><span style="background:#fff3e0;color:#e67e22;border:1px solid #ffcc80;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">${c.complaint_type}</span></td>
+                <td style="max-width:260px;font-size:13px;">${c.description}</td>
+                <td><span style="background:${c.status==='pending'?'#fff8e1':'#e8f5e9'};color:${c.status==='pending'?'#b7770d':'#1e7e34'};border:1px solid ${c.status==='pending'?'#ffe082':'#a5d6a7'};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">${c.status.toUpperCase()}</span></td>
+                <td style="color:var(--muted);font-size:12px;">${new Date(c.submitted_at).toLocaleString()}</td>
+            </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">No complaints submitted</td></tr>`;
+    }
+
+    async function refreshAll() {
+        await Promise.all([loadStats(), loadBoats(), loadEvents(), loadSpotterReports(), loadPatrolActions(), loadComplaints(), loadRewards()]);
+        document.getElementById('timestamp').innerHTML =
+            `📊 Last Updated: ${new Date().toLocaleString()} | OceanGuard — GPS + Community + Coast Guard`;
+    }
+
+    initMap();
+    refreshAll();
+    setInterval(refreshAll, 30000);
+</script>
+</body>
+</html>
