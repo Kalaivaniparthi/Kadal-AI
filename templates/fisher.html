@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OceanGuard - Fisher Portal</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <style>
+        body { background: #f0f4f8; }
+
+        .fisher-navbar {
+            background: var(--navy);
+            border-bottom: 3px solid #27ae60;
+            padding: 14px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky; top: 0; z-index: 2000;
+        }
+        .fisher-navbar h1 { font-size: 20px; font-weight: 700; color: white; }
+        .fisher-navbar h1 span { color: #6bcb77; }
+        .fisher-navbar .nav-right { display:flex; align-items:center; gap:16px; }
+        .fisher-navbar .fisher-info { color:rgba(255,255,255,0.75); font-size:13px; }
+        .fisher-navbar .fisher-info strong { color:white; }
+        .nav-links a {
+            color: rgba(255,255,255,0.75); text-decoration:none;
+            padding: 6px 14px; border-radius:6px; font-size:13px; font-weight:500;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover { background: rgba(255,255,255,0.1); color:white; }
+        .logout-btn { background:rgba(231,76,60,0.2) !important; color:#ff8a80 !important; border:1px solid rgba(231,76,60,0.35) !important; }
+        .logout-btn:hover { background:var(--red) !important; color:white !important; }
+
+        /* Status card */
+        .status-banner {
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .status-banner.clean   { background: #e8f5e9; border: 1px solid #a5d6a7; }
+        .status-banner.warning { background: #fff8e1; border: 1px solid #ffe082; }
+        .status-banner.dumping { background: #fdecea; border: 1px solid #f5c6cb; }
+
+        .status-left h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .status-left p  { font-size: 13px; color: var(--muted); }
+        .risk-circle {
+            width: 80px; height: 80px; border-radius: 50%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            font-weight: 800; font-size: 22px;
+            border: 4px solid;
+        }
+        .risk-circle small { font-size: 10px; font-weight: 600; margin-top: 2px; }
+
+        /* Tabs */
+        .tabs { display:flex; gap:4px; margin-bottom:20px; flex-wrap:wrap; }
+        .tab-btn {
+            padding: 9px 20px; border-radius: 8px; border: 1px solid var(--border);
+            background: white; color: var(--muted); font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; font-family: inherit;
+        }
+        .tab-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+        .tab-btn:hover:not(.active) { background: #f0f4f8; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* QR card */
+        .qr-card {
+            background: white; border: 1px solid var(--border);
+            border-radius: 10px; padding: 14px 16px;
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px; gap: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+        .qr-code-text {
+            font-family: monospace; font-size: 13px; font-weight: 700;
+            color: var(--navy); background: #f0f4f8;
+            padding: 6px 10px; border-radius: 6px; letter-spacing: 1px;
+        }
+        .qr-status-issued   { color: #1e6fa5; background: #e8f4ff; border: 1px solid #aed6f1; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+        .qr-status-redeemed { color: #1e7e34; background: #e8f5e9; border: 1px solid #a5d6a7; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+
+        /* Form styles */
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display:block; margin-bottom:6px; color:var(--navy); font-weight:600; font-size:13px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 10px 14px;
+            border: 1px solid var(--border); border-radius: 8px;
+            font-size: 13px; font-family: inherit; color: var(--text);
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none; border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(30,111,165,0.1);
+        }
+        .submit-btn {
+            background: var(--navy); color: white; border: none;
+            padding: 10px 24px; border-radius: 8px; font-size: 13px;
+            font-weight: 600; cursor: pointer; font-family: inherit;
+            transition: background 0.2s;
+        }
+        .submit-btn:hover { background: var(--navy-lt); }
+        .submit-btn.green { background: #1e7e34; }
+        .submit-btn.green:hover { background: #155724; }
+
+        .success-msg { background:#e8f5e9; color:#1e7e34; border:1px solid #a5d6a7; padding:10px 14px; border-radius:8px; font-size:13px; margin-top:10px; }
+        .error-msg   { background:#fdecea; color:#c0392b; border:1px solid #f5c6cb; padding:10px 14px; border-radius:8px; font-size:13px; margin-top:10px; }
+
+        .scan-result {
+            background: #e8f5e9; border: 1px solid #a5d6a7;
+            border-radius: 10px; padding: 16px; margin-top: 14px;
+            text-align: center; display: none;
+        }
+        .scan-result .reward-amount { font-size: 32px; font-weight: 800; color: #1e7e34; }
+    </style>
+</head>
+<body>
+
+<div class="fisher-navbar">
+    <h1>🎣 Fisher<span>Portal</span></h1>
+    <div class="nav-right">
+        <div class="fisher-info">
+            Welcome, <strong id="fisherName">—</strong> &nbsp;|&nbsp; Boat: <strong id="fisherBoat">—</strong>
+        </div>
+        <div class="nav-links">
+            <a href="/">🗺️ Map</a>
+            <a href="/logout" class="logout-btn">🚪 Logout</a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- Boat Status Banner -->
+    <div id="statusBanner" class="status-banner clean">
+        <div class="status-left">
+            <h2 id="statusTitle">Loading your boat status...</h2>
+            <p id="statusSub">Fetching data from OceanGuard system</p>
+            <div id="aiAction" style="margin-top:8px;font-size:13px;color:var(--muted);"></div>
+        </div>
+        <div class="risk-circle" id="riskCircle" style="color:#1e7e34;border-color:#1e7e34;">
+            <span id="riskScore">—</span>
+            <small>RISK</small>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:24px;">
+        <div class="stat-card"><div class="stat-value" id="totalCollected" style="color:#1e7e34">—</div><div class="stat-label">♻️ Plastic Collected (kg)</div></div>
+        <div class="stat-card"><div class="stat-value" id="totalReward" style="color:#b7770d">—</div><div class="stat-label">💰 Total Reward (₹)</div></div>
+        <div class="stat-card"><div class="stat-value" id="qrIssued" style="color:#1e6fa5">—</div><div class="stat-label">🏷️ QR Bags Issued</div></div>
+        <div class="stat-card"><div class="stat-value" id="qrRedeemed" style="color:#8e44ad">—</div><div class="stat-label">✅ QR Bags Redeemed</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('complaints')">📢 My Complaints</button>
+        <button class="tab-btn" onclick="switchTab('qrbags')">🏷️ QR Bags & Rewards</button>
+        <button class="tab-btn" onclick="switchTab('history')">📋 Reward History</button>
+        <button class="tab-btn" onclick="switchTab('spotter')">👁️ Report Dumping</button>
+    </div>
+
+    <!-- Tab: Complaints -->
+    <div id="tab-complaints" class="tab-content active">
+        <div class="section">
+            <h2>📢 Submit a Complaint</h2>
+            <div class="form-group">
+                <label>Complaint Type</label>
+                <select id="complaintType">
+                    <option value="GPS Tracking Issue">GPS Tracking Issue — My location is wrong</option>
+                    <option value="Wrong Risk Score">Wrong Risk Score — I am marked as dumping unfairly</option>
+                    <option value="Reward Not Received">Reward Not Received — I collected plastic but no reward</option>
+                    <option value="QR Bag Issue">QR Bag Issue — Problem with my QR bag</option>
+                    <option value="False Spotter Report">False Spotter Report — Someone reported me falsely</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Describe your complaint</label>
+                <textarea id="complaintDesc" rows="4" placeholder="Explain your issue in detail..."></textarea>
+            </div>
+            <button class="submit-btn" onclick="submitComplaint()">📤 Submit Complaint</button>
+            <div id="complaintMsg"></div>
+        </div>
+
+        <div class="section">
+            <h2>📋 My Previous Complaints</h2>
+            <div style="overflow-x:auto">
+                <table>
+                    <thead><tr><th>Type</th><th>Description</th><th>Status</th><th>Submitted</th></tr></thead>
+                    <tbody id="complaintsBody">
+                        <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: QR Bags -->
+    <div id="tab-qrbags" class="tab-content">
+        <div class="section">
+            <h2>🏷️ Scan QR Bag to Claim Reward</h2>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+                When you return to harbour with collected plastic, scan your QR bag code and enter the weight to claim your reward of <strong>₹20 per kg</strong>.
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group" style="margin:0">
+                    <label>QR Bag Code</label>
+                    <input type="text" id="scanQrCode" placeholder="e.g. OG-TN-Ram001-AB12CD34" style="font-family:monospace;text-transform:uppercase;">
+                </div>
+                <div class="form-group" style="margin:0">
+                    <label>Plastic Weight (kg)</label>
+                    <input type="number" id="scanPlasticKg" placeholder="e.g. 12.5" min="0.1" step="0.1">
+                </div>
+            </div>
+            <button class="submit-btn green" style="margin-top:12px;" onclick="scanQrBag()">✅ Claim Reward</button>
+            <div id="scanResult" class="scan-result">
+                <div style="font-size:14px;color:#1e7e34;margin-bottom:4px;">🎉 Reward Credited!</div>
+                <div class="reward-amount" id="scanRewardAmount">₹0</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px;">Amount added to your account</div>
+            </div>
+            <div id="scanMsg"></div>
+        </div>
+
+        <div class="section">
+            <h2>🏷️ My QR Bags</h2>
+            <div id="qrBagsList">
+                <div style="text-align:center;color:var(--muted);padding:20px;">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Reward History -->
+    <div id="tab-history" class="tab-content">
+        <div class="section">
+            <h2>💰 My Reward History</h2>
+            <div style="overflow-x:auto">
+                <table>
+                    <thead><tr><th>Plastic (kg)</th><th>Amount (₹)</th><th>Date</th></tr></thead>
+                    <tbody id="rewardHistoryBody">
+                        <tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Report Dumping -->
+    <div id="tab-spotter" class="tab-content">
+        <div class="section">
+            <h2>👁️ Report a Dumping Incident</h2>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
+                Did you see another boat dumping plastic? Report it here. Verified reports earn you a <strong>₹500 reward</strong>.
+            </p>
+            <div class="form-group">
+                <label>Boat ID you saw dumping</label>
+                <input type="text" id="spotBoatId" placeholder="e.g. TN-Ram005" style="text-transform:uppercase;">
+            </div>
+            <div class="form-group">
+                <label>What did you see?</label>
+                <textarea id="spotDesc" rows="4" placeholder="Describe what you saw — time, location, what was dumped..."></textarea>
+            </div>
+            <button class="submit-btn" style="background:#8e44ad;" onclick="submitSpotterReport()">📤 Submit Report</button>
+            <div id="spotterMsg"></div>
+            <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:12px;margin-top:16px;font-size:12px;color:#7d6608;">
+                ⚠️ <strong>Note:</strong> False reports are a serious offence. Only submit if you genuinely witnessed dumping. Your identity is kept confidential.
+            </div>
+        </div>
+    </div>
+
+    <div class="timestamp" id="timestamp">Loading...</div>
+</div>
+
+<script>
+    let boatId = '', fisherName = '';
+
+    async function loadBoatStatus() {
+        const res  = await fetch('/api/fisher/boat-status');
+        if (!res.ok) return;
+        const boat = await res.json();
+        boatId     = boat.id;
+        document.getElementById('fisherBoat').innerText = boat.id;
+
+        const color = boat.status === 'dumping' ? '#c0392b' : boat.status === 'warning' ? '#b7770d' : '#1e7e34';
+        const banner = document.getElementById('statusBanner');
+        banner.className = `status-banner ${boat.status}`;
+
+        document.getElementById('statusTitle').innerText =
+            boat.status === 'dumping' ? `⚠️ ${boat.id} — HIGH RISK FLAGGED` :
+            boat.status === 'warning' ? `🟡 ${boat.id} — Under Observation` :
+            `✅ ${boat.id} — Clean & Compliant`;
+
+        document.getElementById('statusSub').innerText =
+            `Village: ${boat.village} | Transmission: ${boat.transmission_type} | Spotter Reports: ${boat.spotter_reports}`;
+
+        const ai = boat.ai_reason || {};
+        document.getElementById('aiAction').innerHTML =
+            ai.action ? `<b>AI Recommendation:</b> ${ai.action}` : '';
+
+        const circle = document.getElementById('riskCircle');
+        circle.style.color       = color;
+        circle.style.borderColor = color;
+        document.getElementById('riskScore').innerText = boat.risk_score + '%';
+
+        document.getElementById('totalCollected').innerText = boat.plastic_collected + ' kg';
+        document.getElementById('totalReward').innerText    = '₹' + boat.reward.toLocaleString();
+    }
+
+    async function loadQrBags() {
+        const res  = await fetch(`/api/fisher/qr-bags?boat_id=${boatId}`);
+        const bags = await res.json();
+
+        const issued   = bags.filter(b => b.status === 'issued').length;
+        const redeemed = bags.filter(b => b.status === 'redeemed').length;
+        document.getElementById('qrIssued').innerText   = issued;
+        document.getElementById('qrRedeemed').innerText = redeemed;
+
+        document.getElementById('qrBagsList').innerHTML = bags.length ? bags.map(b => `
+            <div class="qr-card">
+                <div>
+                    <div class="qr-code-text">${b.qr_code}</div>
+                    <div style="font-size:11px;color:var(--muted);margin-top:4px;">
+                        Issued: ${new Date(b.issued_at).toLocaleDateString()}
+                        ${b.scanned_at ? ` | Redeemed: ${new Date(b.scanned_at).toLocaleDateString()}` : ''}
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    ${b.status === 'redeemed'
+                        ? `<span style="font-size:13px;color:#1e7e34;font-weight:600;">₹${b.reward_amount} (${b.plastic_kg} kg)</span>`
+                        : `<button onclick="document.getElementById('scanQrCode').value='${b.qr_code}';switchTab('qrbags')"
+                            style="background:#f0f4f8;border:1px solid var(--border);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;">
+                            Use this bag
+                           </button>`}
+                    <span class="qr-status-${b.status}">${b.status.toUpperCase()}</span>
+                </div>
+            </div>`).join('') : '<div style="text-align:center;color:var(--muted);padding:20px;">No QR bags issued yet</div>';
+    }
+
+    async function loadComplaints() {
+        const res        = await fetch(`/api/fisher/complaints?boat_id=${boatId}`);
+        const complaints = await res.json();
+        document.getElementById('complaintsBody').innerHTML = complaints.length ? complaints.map(c => `
+            <tr>
+                <td><span style="background:#f0f4f8;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600;">${c.complaint_type}</span></td>
+                <td style="max-width:300px;font-size:13px;">${c.description}</td>
+                <td><span style="background:${c.status==='pending'?'#fff8e1':'#e8f5e9'};color:${c.status==='pending'?'#b7770d':'#1e7e34'};border:1px solid ${c.status==='pending'?'#ffe082':'#a5d6a7'};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">${c.status.toUpperCase()}</span></td>
+                <td style="color:var(--muted);font-size:12px;">${new Date(c.submitted_at).toLocaleString()}</td>
+            </tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;">No complaints submitted yet</td></tr>';
+    }
+
+    async function loadRewardHistory() {
+        const res     = await fetch(`/api/fisher/rewards?boat_id=${boatId}`);
+        const rewards = await res.json();
+        document.getElementById('rewardHistoryBody').innerHTML = rewards.length ? rewards.map(r => `
+            <tr>
+                <td>${r.plastic_kg} kg</td>
+                <td style="color:#1e7e34;font-weight:600;">₹${r.amount.toLocaleString()}</td>
+                <td style="color:var(--muted)">${new Date(r.rewarded_at).toLocaleString()}</td>
+            </tr>`).join('') : '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px;">No rewards yet — collect plastic to earn rewards!</td></tr>';
+    }
+
+    async function submitComplaint() {
+        const type = document.getElementById('complaintType').value;
+        const desc = document.getElementById('complaintDesc').value.trim();
+        const msg  = document.getElementById('complaintMsg');
+        if (!desc) { msg.className='error-msg'; msg.innerText='Please describe your complaint.'; return; }
+        const res  = await fetch('/api/fisher/complaint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ complaint_type: type, description: desc, boat_id: boatId, fisher_name: fisherName })
+        });
+        const data = await res.json();
+        msg.className = 'success-msg';
+        msg.innerText = '✅ ' + data.message;
+        document.getElementById('complaintDesc').value = '';
+        setTimeout(() => { msg.innerText = ''; loadComplaints(); }, 2000);
+    }
+
+    async function scanQrBag() {
+        const qr_code   = document.getElementById('scanQrCode').value.trim().toUpperCase();
+        const plastic_kg = parseFloat(document.getElementById('scanPlasticKg').value);
+        const msg        = document.getElementById('scanMsg');
+        const result     = document.getElementById('scanResult');
+        if (!qr_code || !plastic_kg) { msg.className='error-msg'; msg.innerText='Enter QR code and weight.'; return; }
+        const res  = await fetch('/api/fisher/scan-qr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ qr_code, plastic_kg })
+        });
+        const data = await res.json();
+        if (data.error) { msg.className='error-msg'; msg.innerText='❌ '+data.error; return; }
+        msg.innerText = '';
+        result.style.display = 'block';
+        document.getElementById('scanRewardAmount').innerText = '₹' + data.reward_amount.toLocaleString();
+        document.getElementById('scanQrCode').value   = '';
+        document.getElementById('scanPlasticKg').value = '';
+        setTimeout(() => { result.style.display='none'; refreshAll(); }, 3000);
+    }
+
+    async function submitSpotterReport() {
+        const boat_id     = document.getElementById('spotBoatId').value.trim().toUpperCase();
+        const description = document.getElementById('spotDesc').value.trim();
+        const msg         = document.getElementById('spotterMsg');
+        if (!boat_id || !description) { msg.className='error-msg'; msg.innerText='Boat ID and description required.'; return; }
+        const res  = await fetch('/api/spotter-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ boat_id, reporter_name: fisherName || 'Fisher', description })
+        });
+        const data = await res.json();
+        msg.className = 'success-msg';
+        msg.innerText = '✅ ' + data.message;
+        document.getElementById('spotBoatId').value = '';
+        document.getElementById('spotDesc').value   = '';
+        setTimeout(() => { msg.innerText = ''; }, 3000);
+    }
+
+    function switchTab(name) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`tab-${name}`).classList.add('active');
+        event.target.classList.add('active');
+    }
+
+    async function refreshAll() {
+        await loadBoatStatus();
+        await Promise.all([loadQrBags(), loadComplaints(), loadRewardHistory()]);
+        document.getElementById('timestamp').innerHTML =
+            `📊 Last Updated: ${new Date().toLocaleString()} | OceanGuard Fisher Portal`;
+    }
+
+    // Get fisher info from session via meta tag approach
+    fetch('/api/fisher/boat-status').then(r => {
+        if (r.status === 403 || r.status === 401) window.location = '/fisher-login';
+    });
+
+    refreshAll();
+    setInterval(refreshAll, 30000);
+</script>
+</body>
+</html>

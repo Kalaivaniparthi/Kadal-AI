@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OceanGuard - AI Marine Plastic Prevention</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/static/main.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <h1>🌊 OceanGuard</h1>
+            <p>AI-Powered Marine Plastic Prevention</p>
+            <p style="font-size:10px; margin-top:2px; opacity:0.6;">Gulf of Mannar, Tamil Nadu</p>
+        </div>
+
+        <div class="stats-container" id="statsContainer">
+            <div style="padding:30px; text-align:center; color:var(--muted);">Loading dashboard...</div>
+        </div>
+
+        <div class="panel-footer">
+            <button class="refresh-btn" onclick="refreshAll()">🔄 REFRESH DATA</button>
+        </div>
+        <div class="panel-timestamp" id="timestamp">Loading...</div>
+    </div>
+
+    <script>
+        let map, boatMarkers = [];
+
+        function initMap() {
+            map = initBaseMap('map', [9.0, 79.0], 8);
+
+            const legend = L.control({ position: 'bottomleft' });
+            legend.onAdd = () => {
+                const div = L.DomUtil.create('div');
+                div.innerHTML = `
+                    <div style="background:white; border:1px solid #dce6f0; padding:10px 14px; border-radius:8px; font-size:11px; color:#5a7a96; line-height:1.8; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                        <b style="color:#0a1628;">📌 LEGEND</b><br>
+                        <span style="color:#e74c3c;">●</span> Dumping Suspect &nbsp;
+                        <span style="color:#f39c12;">●</span> Under Watch<br>
+                        <span style="color:#27ae60;">●</span> Clean Boat &nbsp;&nbsp;&nbsp;&nbsp;
+                        <span style="color:#1e6fa5;">●</span> Village<br>
+                        <span style="color:#e67e22;">⊙</span> Dumping Zone (SDMRI 2023)
+                    </div>`;
+                return div;
+            };
+            legend.addTo(map);
+        }
+
+        async function loadBoatsOnMap() {
+            const boats = await fetch('/api/boats').then(r => r.json());
+            boatMarkers.forEach(m => map.removeLayer(m));
+            boatMarkers = [];
+            boats.forEach(boat => {
+                const marker = L.marker([boat.lat, boat.lng], { icon: makeBoatIcon(boat.status) })
+                    .addTo(map)
+                    .bindPopup(boatPopupHtml(boat))
+                    .bindTooltip(`${boat.id} — ${boat.risk_score}%`, { direction: 'top' });
+                boatMarkers.push(marker);
+            });
+        }
+
+        async function loadDashboardStats() {
+            const [stats, boats] = await Promise.all([
+                fetch('/api/stats').then(r => r.json()),
+                fetch('/api/boats').then(r => r.json())
+            ]);
+            const highRisk = boats.filter(b => b.risk_score > 70).sort((a, b) => b.risk_score - a.risk_score);
+
+            document.getElementById('statsContainer').innerHTML = `
+                <div class="index-stat-card" style="border-left-color:#006994;">
+                    <div class="stat-title">🚢 Total Boats Tracked</div>
+                    <div class="stat-value">${stats.total_boats || 0}</div>
+                </div>
+                <div class="index-stat-card" style="border-left-color:#e74c3c;">
+                    <div class="stat-title">🔴 Dumping Events</div>
+                    <div class="stat-value" style="color:#c0392b;">${stats.dumping_boats || 0}</div>
+                </div>
+                <div class="index-stat-card" style="border-left-color:#f39c12;">
+                    <div class="stat-title">🟡 Under Observation</div>
+                    <div class="stat-value" style="color:#b7770d;">${stats.warning_boats || 0}</div>
+                </div>
+                <div class="index-stat-card" style="border-left-color:#27ae60;">
+                    <div class="stat-title">🟢 Clean Boats</div>
+                    <div class="stat-value" style="color:#1e7e34;">${stats.clean_boats || 0}</div>
+                </div>
+                <div class="index-stat-card" style="border-left-color:#e67e22;">
+                    <div class="stat-title">💰 Rewards Distributed</div>
+                    <div class="stat-value">₹${(stats.total_rewards || 0).toLocaleString()}</div>
+                </div>
+                <div class="index-stat-card" style="border-left-color:#17a2b8;">
+                    <div class="stat-title">♻️ Plastic Collected</div>
+                    <div class="stat-value">${stats.plastic_collected || 0} <span style="font-size:14px;color:var(--muted)">kg</span></div>
+                </div>
+                <div class="index-stat-card" style="border-left-color:#20c997;">
+                    <div class="stat-title">👥 Spotter Reports</div>
+                    <div class="stat-value" style="color:#8e44ad;">${stats.total_reports || 0}</div>
+                </div>
+                <div class="section-title">⚠️ High Risk Boats</div>
+                <div class="risk-list">
+                    ${highRisk.length ? highRisk.map(b => `
+                        <div class="risk-item">
+                            <strong>🔴 ${b.id}</strong>
+                            <span class="badge-danger">${b.risk_score}%</span><br>
+                            <small>${b.village} | Dumped: ${b.plastic_dumped} kg</small>
+                        </div>`).join('') : '<div style="padding:16px;text-align:center;color:var(--muted);">✅ No high risk boats</div>'}
+                </div>
+                <div style="margin-top:10px;">
+                    <a href="/admin" style="display:block; text-align:center; background:var(--navy); color:white; padding:9px; border-radius:8px; text-decoration:none; font-size:13px; font-weight:600;">
+                        📊 Open Admin Panel
+                    </a>
+                </div>
+            `;
+            document.getElementById('timestamp').innerHTML =
+                `📊 ${new Date().toLocaleTimeString()} | SDMRI Gulf of Mannar 2023`;
+        }
+
+        async function refreshAll() {
+            await Promise.all([loadBoatsOnMap(), loadDashboardStats()]);
+        }
+
+        initMap();
+        refreshAll();
+        setInterval(refreshAll, 30000);
+    </script>
+</body>
+</html>
